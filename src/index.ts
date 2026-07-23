@@ -53,10 +53,32 @@ function selectModels(models: NexosCatalogModel[], providerId: string): NexosCat
     return providerId === NEXOS_PROVIDER_ANTHROPIC ? anthropic : completions;
 }
 
+// Build the provider config (models.providers.<id>) for one provider from the
+// discovered catalog. Shared by the live and static catalog hooks. Returns null
+// when there is no key or no models so live discovery stays advisory.
+async function buildNexosProviderResult(
+    providerId: string,
+    apiKey: string | undefined
+): Promise<{ provider: ReturnType<typeof buildProviderConfig> } | null> {
+    if (!apiKey) {
+        return null;
+    }
+    let models: NexosCatalogModel[];
+    try {
+        models = await getNexosCatalog(apiKey);
+    } catch {
+        return null;
+    }
+    const selected = selectModels(models, providerId);
+    if (selected.length === 0) {
+        return null;
+    }
+    const kind = providerId === NEXOS_PROVIDER_ANTHROPIC ? 'anthropic' : 'completions';
+    return { provider: buildProviderConfig({ models: selected, apiKey, kind }) };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function registerNexosProvider(api: any, providerId: string, label: string): void {
-    const kind = providerId === NEXOS_PROVIDER_ANTHROPIC ? 'anthropic' : 'completions';
-
     api.registerProvider({
         id: providerId,
         label,
@@ -66,36 +88,28 @@ function registerNexosProvider(api: any, providerId: string, label: string): voi
             createProviderApiKeyAuthMethod({
                 providerId,
                 methodId: 'api-key',
-                label: 'Nexos AI API key',
-                hint: 'API key from your Nexos AI dashboard',
+                label: 'nexos.ai API key',
+                hint: 'API key from your nexos.ai dashboard',
                 optionKey: 'nexosApiKey',
                 flagName: '--nexos-api-key',
                 envVar: 'NEXOS_API_KEY',
-                promptMessage: 'Enter your Nexos AI API key',
+                promptMessage: 'Enter your nexos.ai API key',
             }),
         ],
+        // Live catalog: consulted at runtime (picker/refresh).
         catalog: {
             order: 'simple',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            run: async (ctx: any) => {
-                const apiKey = resolveNexosApiKey(ctx, providerId);
-                if (!apiKey) {
-                    return null;
-                }
-                let models: NexosCatalogModel[];
-                try {
-                    models = await getNexosCatalog(apiKey);
-                } catch {
-                    // Live discovery is advisory; a fetch failure just yields no
-                    // models for this provider rather than tearing it down.
-                    return null;
-                }
-                const selected = selectModels(models, providerId);
-                if (selected.length === 0) {
-                    return null;
-                }
-                return { provider: buildProviderConfig({ models: selected, apiKey, kind }) };
-            },
+            run: async (ctx: any) => buildNexosProviderResult(providerId, resolveNexosApiKey(ctx, providerId)),
+        },
+        // Static catalog: consulted by the host's models.json generator to
+        // materialize selectable models (this build only lets you select models
+        // present in the agent's static catalog). Declared as `runtime` discovery
+        // in the manifest. Resolves the key from the environment since no ctx is
+        // provided here.
+        staticCatalog: {
+            order: 'simple',
+            run: async () => buildNexosProviderResult(providerId, process.env.NEXOS_API_KEY),
         },
     });
 
@@ -127,11 +141,11 @@ function registerNexosProvider(api: any, providerId: string, label: string): voi
 
 export default definePluginEntry({
     id: 'nexos',
-    name: 'Nexos AI',
+    name: 'nexos.ai',
     description:
-        'Nexos AI unified gateway — access Claude, GPT, Gemini, Grok and 60+ models through one API key.',
+        'nexos.ai unified gateway — access Claude, GPT, Gemini, Grok and 60+ models through one API key.',
     register(api) {
-        registerNexosProvider(api, NEXOS_PROVIDER_COMPLETIONS, 'Nexos AI');
-        registerNexosProvider(api, NEXOS_PROVIDER_ANTHROPIC, 'Nexos AI (Claude)');
+        registerNexosProvider(api, NEXOS_PROVIDER_COMPLETIONS, 'nexos.ai');
+        registerNexosProvider(api, NEXOS_PROVIDER_ANTHROPIC, 'nexos.ai (Claude)');
     },
 });

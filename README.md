@@ -1,6 +1,6 @@
 # openclaw-nexos-provider
 
-An [OpenClaw](https://openclaw.ai) provider plugin for [Nexos AI](https://nexos.ai) —
+An [OpenClaw](https://openclaw.ai) provider plugin for [nexos.ai](https://nexos.ai) —
 a unified AI gateway that exposes Claude, GPT, Gemini, Grok, and 60+ other models
 through a single API endpoint and one API key.
 

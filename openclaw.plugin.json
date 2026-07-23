@@ -1,10 +1,16 @@
 {
   "id": "nexos",
-  "name": "Nexos AI",
-  "description": "Nexos AI unified gateway — access Claude, GPT, Gemini, Grok and 60+ models through one API key.",
+  "name": "nexos.ai",
+  "description": "nexos.ai unified gateway — access Claude, GPT, Gemini, Grok and 60+ models through one API key.",
   "providers": ["nexos", "nexos-anthropic"],
   "modelSupport": {
     "modelPrefixes": ["nexos/", "nexos-anthropic/"]
+  },
+  "modelCatalog": {
+    "discovery": {
+      "nexos": "runtime",
+      "nexos-anthropic": "runtime"
+    }
   },
   "setup": {
     "providers": [
@@ -20,12 +26,12 @@
       "provider": "nexos",
       "method": "api-key",
       "choiceId": "nexos-api-key",
-      "choiceLabel": "Nexos AI API key",
+      "choiceLabel": "nexos.ai API key",
       "groupId": "nexos",
-      "groupLabel": "Nexos AI",
+      "groupLabel": "nexos.ai",
       "cliFlag": "--nexos-api-key",
       "cliOption": "--nexos-api-key <key>",
-      "cliDescription": "Nexos AI API key"
+      "cliDescription": "nexos.ai API key"
     }
   ],
   "activation": {

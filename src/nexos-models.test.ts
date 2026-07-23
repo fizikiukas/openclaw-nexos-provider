@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
     NEXOS_BASE_URL,
-    beautifyName,
     buildNexosCatalog,
     buildProviderConfig,
     fetchNexosModels,
@@ -10,36 +9,34 @@ import {
     type NexosCatalogModel,
 } from './nexos-models.js';
 
+// Mirrors the real nexos.ai /v1/models response shape.
 const apiPayload = {
     data: [
         {
-            id: 'model-claude',
-            name: 'claude-opus-4-6',
+            id: 'Claude Opus 4.6',
+            name: 'Claude Opus 4.6',
             nexos_model_id: 'uuid-claude',
-            endpoints: ['chat_completions', 'messages'],
+            endpoints: ['chat_completion', 'messages'],
+            max_tokens: 64000,
+            context_length: 200000,
+            pricing: { input_cost_per_token: '0.000001', output_cost_per_token: '0.000005' },
         },
         {
-            id: 'model-gpt',
-            name: 'gpt-5.2',
+            id: 'GPT-5.2',
+            name: 'GPT-5.2',
             nexos_model_id: 'uuid-gpt',
-            endpoints: ['chat_completions'],
+            endpoints: ['chat_completion'],
+            max_tokens: 32000,
+            context_length: 272000,
         },
         {
-            id: 'model-grok',
-            name: 'grok-4',
+            id: 'Grok 4',
+            name: 'Grok 4',
             nexos_model_id: 'uuid-grok',
-            endpoints: ['chat_completions'],
+            endpoints: ['chat_completion'],
         },
     ],
 };
-
-describe('beautifyName', () => {
-    it('title-cases and replaces separators', () => {
-        expect(beautifyName('claude-opus-4-6')).toBe('Claude Opus 4 6');
-        expect(beautifyName('gpt-5.2')).toBe('Gpt 5 2');
-        expect(beautifyName('provider@model')).toBe('Provider @ Model');
-    });
-});
 
 describe('prioritizeModel', () => {
     it('ranks GPT-5 highest, then by prefix', () => {
@@ -53,15 +50,28 @@ describe('prioritizeModel', () => {
 });
 
 describe('buildNexosCatalog', () => {
-    it('projects models with beautified aliases and required definition fields', () => {
+    it("uses nexos.ai's own name as the alias and the API's token limits", () => {
         const catalog = buildNexosCatalog(apiPayload);
         const gpt = catalog.find((m) => m.nexosModelId === 'uuid-gpt');
         expect(gpt).toBeDefined();
-        expect(gpt!.alias).toBe('Nexos Gpt 5 2');
+        expect(gpt!.alias).toBe('GPT-5.2');
         expect(gpt!.definition.id).toBe('uuid-gpt');
-        expect(gpt!.definition.name).toBe('Nexos Gpt 5 2');
-        expect(gpt!.definition.maxTokens).toBeGreaterThan(0);
-        expect(gpt!.definition.contextWindow).toBeGreaterThan(0);
+        expect(gpt!.definition.name).toBe('GPT-5.2');
+        expect(gpt!.definition.maxTokens).toBe(32000);
+        expect(gpt!.definition.contextWindow).toBe(272000);
+    });
+
+    it('converts nexos.ai per-token pricing to USD per million tokens', () => {
+        const claude = buildNexosCatalog(apiPayload).find((m) => m.nexosModelId === 'uuid-claude');
+        expect(claude!.definition.cost.input).toBeCloseTo(1);
+        expect(claude!.definition.cost.output).toBeCloseTo(5);
+    });
+
+    it('falls back to defaults when the API omits limits and pricing', () => {
+        const grok = buildNexosCatalog(apiPayload).find((m) => m.nexosModelId === 'uuid-grok');
+        expect(grok!.definition.maxTokens).toBe(8192);
+        expect(grok!.definition.contextWindow).toBe(200000);
+        expect(grok!.definition.cost.input).toBe(0);
     });
 
     it('sorts by priority (GPT-5 first)', () => {
@@ -72,12 +82,13 @@ describe('buildNexosCatalog', () => {
     it('defaults endpoints and skips entries missing id/name', () => {
         const catalog = buildNexosCatalog({
             data: [
-                { name: 'gpt-5.2', nexos_model_id: 'uuid-a' },
-                { name: 'no-id' },
-                { nexos_model_id: 'no-name' },
+                { name: 'Some Model', nexos_model_id: 'uuid-a' },
+                { name: 'no-model-id' },
+                { nexos_model_id: 'no-name-or-id' },
             ],
         });
         expect(catalog).toHaveLength(1);
+        expect(catalog[0].alias).toBe('Some Model');
         expect(catalog[0].endpoints).toEqual(['chat_completions']);
     });
 

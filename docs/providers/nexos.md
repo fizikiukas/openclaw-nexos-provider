@@ -1,9 +1,9 @@
 ---
-title: "Nexos AI"
-summary: "Use Nexos AI's unified gateway (Claude, GPT, Gemini, Grok, and more) in OpenClaw via one API key"
+title: "nexos.ai"
+summary: "Use nexos.ai's unified gateway (Claude, GPT, Gemini, Grok, and more) in OpenClaw via one API key"
 ---
 
-Nexos AI is a unified AI gateway that provides OpenAI-compatible access to models
+nexos.ai is a unified AI gateway that provides OpenAI-compatible access to models
 from many providers — Anthropic, OpenAI, Google, xAI, Mistral, and more — through
 a single API endpoint and API key.
 
@@ -17,7 +17,7 @@ This plugin registers two OpenClaw providers, both authenticated with
 
 ## Getting started
 
-1. Get an API key from your Nexos AI dashboard.
+1. Get an API key from your nexos.ai dashboard.
 2. Provide it to OpenClaw:
 
    ```bash

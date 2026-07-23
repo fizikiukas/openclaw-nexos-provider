@@ -13,9 +13,9 @@ export const NEXOS_BASE_URL = 'https://api.nexos.ai/v1';
 export const NEXOS_PROVIDER_COMPLETIONS = 'nexos';
 export const NEXOS_PROVIDER_ANTHROPIC = 'nexos-anthropic';
 
+// Fallbacks used only when the nexos.ai /v1/models response omits the value.
 // Anthropic's messages transport (and OpenClaw's request builder generally)
-// requires a positive maxTokens on every model definition, so materialize a
-// conservative default. Nexos does not advertise per-model output limits.
+// requires a positive maxTokens on every model definition.
 const DEFAULT_MAX_TOKENS = 8192;
 const DEFAULT_CONTEXT_WINDOW = 200000;
 
@@ -48,7 +48,7 @@ export interface NexosModelDefinition {
 }
 
 export interface NexosCatalogModel {
-    /** Display name, e.g. "Nexos Claude Opus 4 8". */
+    /** Display name as provided by nexos.ai (its model `name`), e.g. "Claude Opus 4.8". */
     alias: string;
     /** Stable Nexos model id used as the provider-scoped model id. */
     nexosModelId: string;
@@ -74,14 +74,19 @@ interface NexosApiModel {
     name?: string;
     nexos_model_id?: string;
     endpoints?: unknown;
+    max_tokens?: number;
+    context_length?: number;
+    pricing?: {
+        input_cost_per_token?: string | number;
+        output_cost_per_token?: string | number;
+    };
 }
 
-export function beautifyName(name: string): string {
-    return name
-        .replace(/-/g, ' ')
-        .replace(/\./g, ' ')
-        .replace(/@/g, ' @ ')
-        .replace(/\b\w/g, (l) => l.toUpperCase());
+// nexos.ai pricing is USD per token (as a string); OpenClaw model cost is USD
+// per million tokens. Convert, tolerating strings/absent values.
+function costPerMillion(perToken: string | number | undefined): number {
+    const value = typeof perToken === 'string' ? Number.parseFloat(perToken) : perToken;
+    return Number.isFinite(value) && (value as number) > 0 ? (value as number) * 1_000_000 : 0;
 }
 
 export function prioritizeModel(name: string): number {
@@ -104,27 +109,39 @@ export function buildNexosCatalog(apiData: unknown): NexosCatalogModel[] {
     const models: NexosCatalogModel[] = [];
     for (const model of data) {
         const nexosModelId = model.nexos_model_id;
-        const rawName = model.name;
-        if (!nexosModelId || !rawName) {
+        // Use the display name nexos.ai provides (its `name`, falling back to
+        // `id`) directly as the alias — no synthetic prefix or reformatting.
+        const alias = model.name || model.id;
+        if (!nexosModelId || !alias) {
             continue;
         }
-        const alias = `Nexos ${beautifyName(rawName)}`;
         const endpoints = Array.isArray(model.endpoints)
             ? (model.endpoints as string[])
             : ['chat_completions'];
         models.push({
             alias,
             nexosModelId,
-            priority: prioritizeModel(rawName),
+            priority: prioritizeModel(alias),
             endpoints,
             definition: {
                 id: nexosModelId,
                 name: alias,
                 reasoning: true,
                 input: ['text', 'image'],
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                maxTokens: DEFAULT_MAX_TOKENS,
-                contextWindow: DEFAULT_CONTEXT_WINDOW,
+                cost: {
+                    input: costPerMillion(model.pricing?.input_cost_per_token),
+                    output: costPerMillion(model.pricing?.output_cost_per_token),
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                },
+                maxTokens:
+                    typeof model.max_tokens === 'number' && model.max_tokens > 0
+                        ? model.max_tokens
+                        : DEFAULT_MAX_TOKENS,
+                contextWindow:
+                    typeof model.context_length === 'number' && model.context_length > 0
+                        ? model.context_length
+                        : DEFAULT_CONTEXT_WINDOW,
                 compat: {
                     supportsStore: true,
                     supportsDeveloperRole: true,
