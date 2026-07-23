@@ -4,6 +4,15 @@
   "description": "Nexos AI model provider plugin for OpenClaw — access Claude, GPT, Gemini, Grok and 60+ models through one API key.",
   "type": "module",
   "license": "MIT",
+  "author": "fizikiukas",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fizikiukas/openclaw-nexos-provider.git"
+  },
+  "homepage": "https://github.com/fizikiukas/openclaw-nexos-provider#readme",
+  "bugs": {
+    "url": "https://github.com/fizikiukas/openclaw-nexos-provider/issues"
+  },
   "keywords": [
     "openclaw",
     "openclaw-plugin",
