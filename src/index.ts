@@ -79,6 +79,10 @@ async function buildNexosProviderResult(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function registerNexosProvider(api: any, providerId: string, label: string): void {
+    // Only the primary `nexos` provider exposes the onboarding/auth-choice; the
+    // `nexos-anthropic` provider reuses the same key via providerAuthAliases, so
+    // it must NOT register a duplicate wizard choice (wizard: false).
+    const isPrimary = providerId === NEXOS_PROVIDER_COMPLETIONS;
     api.registerProvider({
         id: providerId,
         label,
@@ -94,6 +98,17 @@ function registerNexosProvider(api: any, providerId: string, label: string): voi
                 flagName: '--nexos-api-key',
                 envVar: 'NEXOS_API_KEY',
                 promptMessage: 'Enter your nexos.ai API key',
+                // Expose the provider in `openclaw onboard` / auth-choice so the
+                // host runs its models.json materialization for nexos.
+                wizard: isPrimary
+                    ? {
+                          choiceId: 'nexos-api-key',
+                          choiceLabel: 'nexos.ai API key',
+                          groupId: 'nexos',
+                          groupLabel: 'nexos.ai',
+                          onboardingScopes: ['text-inference'],
+                      }
+                    : undefined,
             }),
         ],
         // Live catalog: consulted at runtime (picker/refresh).

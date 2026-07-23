@@ -25,12 +25,13 @@ openclaw plugins install openclaw-nexos-provider
 
 ## Configure
 
-Set your Nexos API key (either works):
+Provide your nexos.ai API key via the environment (this is all the provider
+needs — OpenClaw detects it from `NEXOS_API_KEY`):
 
 ```bash
 export NEXOS_API_KEY="your-nexos-key"
-# or, interactively:
-openclaw onboard --nexos-api-key "your-nexos-key"
+# optional, to run onboarding for the provider explicitly:
+openclaw onboard --auth-choice nexos-api-key
 ```
 
 Then pick a model:

@@ -18,11 +18,12 @@ This plugin registers two OpenClaw providers, both authenticated with
 ## Getting started
 
 1. Get an API key from your nexos.ai dashboard.
-2. Provide it to OpenClaw:
+2. Provide it to OpenClaw via the environment (auto-detected):
 
    ```bash
-   openclaw onboard --nexos-api-key "$NEXOS_API_KEY"
-   # or set NEXOS_API_KEY in the environment
+   export NEXOS_API_KEY="your-nexos-key"
+   # optional: run onboarding for the provider explicitly
+   openclaw onboard --auth-choice nexos-api-key
    ```
 
 3. Verify the models are available:
